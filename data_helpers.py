@@ -7,10 +7,13 @@ import _pickle as cPickle
 import re
 import itertools
 from collections import Counter
+import numpy as np
+import json
 
 
 PAD = "_PAD"
 UNK = "_UNK"
+VALIDATION_SPLIT = 0.1
 
 
 def Q2B(uchar):
@@ -110,17 +113,26 @@ def get_vocab(path='./data/vocab.pkl'):
   return vocab, char_list
 
 
-def build_dataset(pos_path='chinese/pos_t.txt', neg_path='chinese/neg_t.txt',
+def build_dataset(json_path='question_labels.json', 
                   data_dir='./data', max_doc_len=30, max_sent_len=50, ):
-  pos_docs = list(open(os.path.join(data_dir, pos_path)).readlines())
-  neg_docs = list(open(os.path.join(data_dir, neg_path)).readlines())
+  q_dict = {'NUMBER': 0, 'PERSON': 1, 'LOCATION': 2, 'ORGANIZATION': 3, 'ARTIFACT': 4, 'TIME': 5, \
+  'PROCEDURE': 6, 'AFFIRMATION': 7, 'CAUSALITY': 8}
+
+  with open(os.path.join(data_dir, json_path), 'r') as f:
+    question_labels = json.load(f)
+
+  q_zh = []
+  q_type = []
+  for line in question_labels:
+    q_zh.append(line['q_zh'])
+    q_type.append(q_dict[line['q_type']])
+
+
   vocab, _ = get_vocab('./data/vocab.pkl')
-  pos_size = len(pos_docs)
-  neg_size = len(neg_docs)
-  pos_train_size = int(pos_size * 0.9)
-  pos_valid_size = pos_size - pos_train_size
-  neg_train_size = int(neg_size * 0.9)
-  neg_valid_size = neg_size - neg_train_size
+  perm = np.random.permutation(len(q_zh))
+  idx_train = perm[:int(len(q_zh)*(1-VALIDATION_SPLIT))]
+  idx_val = perm[int(len(q_zh)*(1-VALIDATION_SPLIT)):]
+
   train_path = os.path.join(data_dir, 'train.tfrecords')
   valid_path = os.path.join(data_dir, 'valid.tfrecords')
 
@@ -157,30 +169,24 @@ def build_dataset(pos_path='chinese/pos_t.txt', neg_path='chinese/neg_t.txt',
 
   # oversampling
   with tf.python_io.TFRecordWriter(train_path) as out_f:
-    train_size = max(pos_train_size, neg_train_size)
-    pos_train_docs = np.random.choice(upsampling(pos_docs[:pos_train_size], train_size), train_size, replace=False)
-    neg_train_docs = np.random.choice(upsampling(neg_docs[:neg_train_size], train_size), train_size, replace=False)
+    train_size = len(idx_train)
 
-    print(len(pos_train_docs), len(neg_train_docs))
+    train_docs = [q_zh[i] for i in idx_train]
+    train_type = [q_type[i] for i in idx_train]
+    
     for i in tqdm(range(train_size)):
-      pos_row = pos_train_docs[i]
-      neg_row = neg_train_docs[i]
-      write_data(pos_row, 1, out_f)
-      write_data(neg_row, 0, out_f)
+      row = train_docs[i]
+      write_data(row, train_type[i], out_f)
 
   with tf.python_io.TFRecordWriter(valid_path) as out_f:
-    valid_size = max(pos_valid_size, neg_valid_size)
-    pos_valid_docs = np.random.choice(upsampling(pos_docs[pos_train_size:], valid_size), valid_size, replace=False)
-    neg_valid_docs = np.random.choice(upsampling(neg_docs[neg_train_size:], valid_size), valid_size, replace=False)
+    valid_size = len(idx_val)
+    valid_docs = [q_zh[i] for i in idx_val]
+    valid_type = [q_type[i] for i in idx_val]
     for i in tqdm(range(valid_size)):
-      pos_row = pos_valid_docs[i]
-      neg_row = neg_valid_docs[i]
-      write_data(pos_row, 1, out_f)
-      write_data(neg_row, 0, out_f)
+      row = valid_docs[i]
+      write_data(row, valid_type[i], out_f)
 
-  print('Done {} records, train {}, valid {}'.format(pos_size + neg_size,
-                                                     pos_train_size + neg_train_size,
-                                                     pos_valid_size + neg_valid_size))
+  print('Done train {}, valid {}'.format(train_size, valid_size))
 
 
 if __name__ == '__main__':
