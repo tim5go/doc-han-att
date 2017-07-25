@@ -27,7 +27,7 @@ class Model(object):
     self.sentence_lengths = tf.placeholder(shape=(self.batch_size, self.document_size), dtype=tf.int64, name='sentence_lengths')
     self.document_lengths = tf.placeholder(shape=(self.batch_size), dtype=tf.int64, name='document_lengths')
 
-    with tf.device('/cpu:0'):
+    with tf.device('/gpu:0'):
       self.embedding = tf.get_variable('embedding',
                                        [self.vocab_size, self.char_embedding_size],
                                        trainable=False)
@@ -61,7 +61,7 @@ class Model(object):
 
     with tf.variable_scope('losses'):
       logits = layers.fully_connected(inputs=sent_attn_outputs,
-                                      num_outputs=2,
+                                      num_outputs=9,
                                       activation_fn=None,
                                       weights_regularizer=layers.l2_regularizer(scale=L2_REG))
       pred = tf.argmax(logits, 1)

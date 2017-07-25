@@ -18,7 +18,7 @@ flags.DEFINE_integer('word_attention_size', 300, 'Word level attention unit size
 flags.DEFINE_integer('sent_attention_size', 300, 'Sentence level attention unit size')
 flags.DEFINE_integer('char_embedding_size', 300, 'Embedding dimension')
 flags.DEFINE_string('checkpoint_dir', 'checkpoint', 'Directory name to save the checkpoints [checkpoint]')
-flags.DEFINE_integer('vocab_size', 6790, 'vocabulary size')
+flags.DEFINE_integer('vocab_size', 6342, 'vocabulary size')
 flags.DEFINE_float('keep_prob', 0.5, 'Dropout keep prob')
 flags.DEFINE_integer('document_size', 30, 'document size')
 flags.DEFINE_integer('sentence_size', 50, 'sentence size')
